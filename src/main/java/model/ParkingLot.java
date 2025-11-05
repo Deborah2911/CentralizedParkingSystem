@@ -1,24 +1,21 @@
 package model;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
+@Entity
 public class ParkingLot {
 
+    @Id
+    @GeneratedValue(strategy=GenerationType.AUTO)
     private int id;
     private String name;
     private String location;
     private int spots;
     private double price;
 
-    public ParkingLot(int id, String name, String location, int spots, double price) {
-        this.id = id;
-        this.name = name;
-        this.location = location;
-        this.spots = spots;
-        this.price = price;
-    }
-
-    public String getLocation() {
-        return location;
-    }
+    public String getLocation() { return location; }
 
     public void setLocation(String location) {
         this.location = location;
