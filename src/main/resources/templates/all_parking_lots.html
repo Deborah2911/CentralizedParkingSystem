@@ -16,12 +16,13 @@
                 <div class="card-body">
                     <h5 class="card-title" th:text="${lot.name}">Parking Name</h5>
                     <h6 class="card-subtitle mb-2 text-muted">
-                        <a th:href="'https://maps.google.com/?q=' + ${lot.location}" target="_blank"
+                        <a th:href="${lot.location}" target="_blank"
                            th:text="${lot.location}">Location</a>
                     </h6>
                     <p class="card-text">
-                        <strong>Spots:</strong> <span th:text="${lot.spots}">0</span><br>
-                        <strong>Price:</strong> $<span th:text="${lot.price}">0.00</span>/hr
+                        <strong>Total number of parking spots:</strong> <span th:text="${lot.spots}">0</span><br>
+                        <strong>Free number of parking spots:</strong> <span th:text="${lot.freeSpots}">0</span><br>
+                        <strong>Price:</strong> RON<span th:text="${lot.price}">0.00</span>/hr
                     </p>
                 </div>
             </div>
