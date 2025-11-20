@@ -20,4 +20,8 @@ public class UserServiceImpl implements UserServiceI {
     public void createUser(User user) {
         userRepo.save(user);
     }
+
+    public User getUser(String username) {
+        return userRepo.findByUsername(username);
+    }
 }
