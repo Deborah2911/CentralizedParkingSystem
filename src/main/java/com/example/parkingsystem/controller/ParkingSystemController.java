@@ -43,16 +43,18 @@ public class ParkingSystemController{
 
     @PostMapping("/login")
     public String processLogin(@ModelAttribute("user") User user, Model model) {
-        if ("admin".equals(user.getUsername()) && "password".equals(user.getPassword())) {
-            return "redirect:/parking-lots";
-        }else if ("manager1".equals(user.getUsername()) && "password1".equals(user.getPassword())) {
-            user = userService.getUser(user.getUsername());
-            return "redirect:/parkinglot?managerId=" + user.getId();
+        User dbUser = userService.getUser(user.getUsername());
+        if (dbUser != null && dbUser.getPassword().equals(user.getPassword())) {
+            if (dbUser.getRole() == 1) {
+                return "redirect:/parking-lots";
+            } else if (dbUser.getRole() == 2) {
+                return "redirect:/parkinglot?managerId=" + dbUser.getId();
+            } else if (dbUser.getRole() == 3) {
+                return "redirect:/add";
+            }
         }
-        else {
-            model.addAttribute("loginError", "Invalid username or password");
-            return "login";
-        }
+        model.addAttribute("loginError", "Invalid username or password");
+        return "login";
     }
 
     @GetMapping("/signup")
@@ -63,8 +65,7 @@ public class ParkingSystemController{
 
     @PostMapping("/signup")
     public String processSignup(@ModelAttribute("user") User user, Model model) {
-        // userService.save(user);
-
+         userService.createUser(user);
         return "redirect:/login";
     }
 
@@ -88,5 +89,17 @@ public class ParkingSystemController{
 
         parkingService.updateParkingLot(parkingLot);
         return "redirect:/manager/parkinglot?managerId=" + parkingLot.getManagerId();
+    }
+
+    @GetMapping("/add")
+    public String showAddParkingLotForm(Model model) {
+        model.addAttribute("parkingLot", new ParkingLot());
+        return "addParkingLot";
+    }
+
+    @PostMapping("/add")
+    public String addParkingLot(@ModelAttribute("parkingLot") ParkingLot parkingLot) {
+        parkingService.addParkingLot(parkingLot);
+        return "redirect:/parking-lots";
     }
 }

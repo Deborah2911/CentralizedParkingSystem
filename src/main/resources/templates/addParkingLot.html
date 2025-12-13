@@ -2,7 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Manage Parking Lot</title>
+    <title>Add Parking Lot</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
@@ -11,6 +11,7 @@
             background-color: #f3fff3;
             font-family: Arial, sans-serif;
         }
+
         .container {
             max-width: 700px;
             margin-top: 40px;
@@ -20,15 +21,18 @@
             border: 1px solid #b2d8b2;
             box-shadow: 0 3px 10px rgba(0,0,0,0.08);
         }
+
         h2 {
             text-align: center;
             color: #2f5f2f;
             margin-bottom: 25px;
         }
+
         button {
             background-color: #4caf50;
             border: none;
         }
+
         button:hover {
             background-color: #449d48;
         }
@@ -36,45 +40,51 @@
 </head>
 
 <body>
+
 <div class="container">
     <div class="container">
         <div style="text-align: right; margin-bottom: 10px;">
             <a href="/login" class="btn btn-danger">Logout</a>
         </div>
-    <h2>Manage Parking Lot</h2>
+    <h2>Add New Parking Lot</h2>
 
-    <form th:action="@{/manager/update}" th:object="${parkingLot}" method="post">
-
-        <!-- Hidden ID -->
-        <input type="hidden" th:field="*{id}"/>
+    <form th:action="@{/manager/add}" th:object="${parkingLot}" method="post">
 
         <div class="mb-3">
             <label class="form-label">Parking Lot Name</label>
-            <input class="form-control" th:field="*{name}" required>
+            <input class="form-control" th:field="*{name}" required />
         </div>
 
         <div class="mb-3">
             <label class="form-label">Location (URL)</label>
-            <input class="form-control" th:field="*{location}" required>
+            <input class="form-control" th:field="*{location}" required />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Manager ID</label>
+            <input type="number" class="form-control" th:field="*{managerId}" required />
         </div>
 
         <div class="mb-3">
             <label class="form-label">Total Spots</label>
-            <input type="number" min="0" class="form-control" th:field="*{spots}" required>
+            <input type="number" min="0" class="form-control" th:field="*{spots}" required />
         </div>
 
         <div class="mb-3">
             <label class="form-label">Free Spots</label>
-            <input type="number" min="0" class="form-control" th:field="*{freeSpots}" required>
+            <input type="number" min="0" class="form-control" th:field="*{freeSpots}" required />
         </div>
 
         <div class="mb-3">
             <label class="form-label">Price per Hour (RON)</label>
-            <input type="number" step="0.01" min="0" class="form-control" th:field="*{price}" required>
+            <input type="number" step="0.01" min="0" class="form-control" th:field="*{price}" required />
         </div>
 
-        <button class="btn btn-success w-100 mt-3" type="submit">Update Parking Lot</button>
+        <button class="btn btn-success w-100 mt-3" type="submit">
+            Add Parking Lot
+        </button>
     </form>
 </div>
+
 </body>
 </html>
