@@ -11,6 +11,5 @@ public interface ParkingServiceI {
     void deleteById(Integer id);
     void addParkingLot(ParkingLot parkingLot);
     void updateParkingLot(ParkingLot parkingLot);
-//    List<ParkingLot> getByName(String name);
-//    List<ParkingLot> getByPrice(double price);
+    List<ParkingLot> getSortedLots(String sortBy, Double userLat, Double userLon);
 }

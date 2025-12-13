@@ -18,6 +18,35 @@ public class ParkingLot {
     private int freeSpots;
     @Column(name="price_per_hour")
     private double price;
+    private Double latitude;
+    private Double longitude;
+
+    @Transient  // This field won't be persisted to database
+    private Double distance;
+
+    public Double getDistance() {
+        return distance;
+    }
+
+    public void setDistance(Double distance) {
+        this.distance = distance;
+    }
+
+    public Double getLatitude() {
+        return latitude;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
 
     public String getLocation() { return location; }
 

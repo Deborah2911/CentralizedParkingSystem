@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
 
@@ -29,9 +30,25 @@ public class ParkingSystemController{
     public String home() { return "redirect:/login"; }
 
     @GetMapping("/parking-lots")
-    public String showParkingLots(Model model) {
-        List<ParkingLot> parkingLots = parkingService.getAllLots();
+    public String showParkingLots(
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) Double userLat,
+            @RequestParam(required = false) Double userLon,
+            Model model) {
+
+        // ADD THIS DEBUG LINE
+        System.out.println("DEBUG - Sort: " + sort + ", UserLat: " + userLat + ", UserLon: " + userLon);
+
+        List<ParkingLot> parkingLots;
+
+        if (sort != null) {
+            parkingLots = parkingService. getSortedLots(sort, userLat, userLon);
+        } else {
+            parkingLots = parkingService. getAllLots();
+        }
+
         model.addAttribute("parkingLots", parkingLots);
+        model.addAttribute("currentSort", sort != null ? sort :  "nearest");
         return "all_parking_lots";
     }
 
@@ -83,12 +100,15 @@ public class ParkingSystemController{
         return "manageParkingLot";
     }
 
-
-    @PostMapping("/update")
-    public String updateParkingLot(@ModelAttribute("parkingLot") ParkingLot parkingLot) {
-
-        parkingService.updateParkingLot(parkingLot);
-        return "redirect:/manager/parkinglot?managerId=" + parkingLot.getManagerId();
+    @PostMapping("/parkinglot")
+    public String updateParkingLot(@ModelAttribute("parkingLot") ParkingLot parkingLot, RedirectAttributes redirectAttributes) {
+        try {
+            parkingService.updateParkingLot(parkingLot);
+            redirectAttributes. addFlashAttribute("successMessage", "Parking lot updated successfully!");
+        } catch (Exception e) {
+            redirectAttributes. addFlashAttribute("errorMessage", "Failed to update parking lot: " + e.getMessage());
+        }
+        return "redirect:/parkinglot?managerId=" + parkingLot.getManagerId();
     }
 
     @GetMapping("/add")
@@ -98,8 +118,13 @@ public class ParkingSystemController{
     }
 
     @PostMapping("/add")
-    public String addParkingLot(@ModelAttribute("parkingLot") ParkingLot parkingLot) {
-        parkingService.addParkingLot(parkingLot);
-        return "redirect:/parking-lots";
+    public String addParkingLot(@ModelAttribute("parkingLot") ParkingLot parkingLot, RedirectAttributes redirectAttributes) {
+        try {
+            parkingService.addParkingLot(parkingLot);
+            redirectAttributes.addFlashAttribute("successMessage", "Parking lot added successfully!");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Failed to add parking lot:  " + e.getMessage());
+        }
+        return "redirect:/add";
     }
 }

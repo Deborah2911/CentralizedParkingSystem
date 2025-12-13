@@ -9,6 +9,9 @@
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
     <style>
         body {
             background-color: #f3fff3;
@@ -42,15 +45,6 @@
             font-weight: bold;
         }
 
-        .card-subtitle a {
-            text-decoration: none;
-            color: #3a7f3a;
-        }
-
-        .card-subtitle a:hover {
-            text-decoration: underline;
-        }
-
         .container {
             max-width: 1300px;
         }
@@ -60,33 +54,49 @@
 <body>
 
 <div class="container py-4">
-    <div class="container">
-        <div style="text-align: right; margin-bottom: 10px;">
-            <a href="/login" class="btn btn-danger">Logout</a>
-        </div>
+
+    <!-- Logout -->
+    <div class="text-end mb-2">
+        <a href="/login" class="btn btn-danger">Logout</a>
+    </div>
+
     <div class="page-header">
         <h1>Available Parking Lots</h1>
     </div>
 
+    <!-- Messages -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show">
+        <span th:text="${successMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show">
+        <span th:text="${errorMessage}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Sort + Location -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <label for="sortSelect" class="form-label fw-bold">Sort by:</label>
-            <select id="sortSelect" class="form-select" style="width:200px;"
-                    th:onchange="'window.location.href=\'/parking?sort=\' + this.value'">
-                <option value="nearest">Nearest</option>
-                <option value="name">Name</option>
-                <option value="availability">Availability</option>
-                <option value="pricing">Pricing</option>
+            <select id="sortSelect" class="form-select" style="width: 200px;">
+                <option value="name" th:selected="${currentSort == 'name'}">Name</option>
+                <option value="nearest" th:selected="${currentSort == 'nearest'}">Nearest</option>
+                <option value="availability" th:selected="${currentSort == 'availability'}">Availability</option>
+                <option value="pricing" th:selected="${currentSort == 'pricing'}">Pricing</option>
             </select>
         </div>
 
         <div>
-            <span class="fw-bold">View your current parking spot:</span>
-            <a th:href="@{/current-parking}" class="text-decoration-none ms-1"
-               style="color:#3a7f3a;">Click here</a>
+            <span class="fw-bold">My Location:</span>
+            <a href="#" class="text-decoration-none ms-1" style="color:#3a7f3a;"
+               data-bs-toggle="modal" data-bs-target="#locationModal">
+                Click here
+            </a>
         </div>
     </div>
 
+    <!-- Parking cards -->
     <div class="row g-4 justify-content-center">
         <div class="col-md-5 col-lg-4" th:each="lot : ${parkingLots}">
             <div class="card shadow-sm">
@@ -96,6 +106,12 @@
                     <p class="card-text">
                         <a th:href="${lot.location}" target="_blank"
                            th:text="${lot.location}">Location</a><br>
+
+                        <span th:if="${lot.distance != null}"
+                              class="badge bg-info text-dark">
+                            Distance:
+                            <span th:text="${#numbers.formatDecimal(lot.distance,1,1)}">0.0</span> km
+                        </span><br>
 
                         <strong>Total spots:</strong>
                         <span th:text="${lot.spots}">0</span><br>
@@ -110,8 +126,145 @@
             </div>
         </div>
     </div>
-
 </div>
+
+<!-- Location Modal -->
+<div class="modal fade" id="locationModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header" style="background-color:#f3fff3;">
+                <h5 class="modal-title" style="color:#2f5f2f;">
+                    <i class="bi bi-geo-alt-fill"></i> My Location
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div id="locationStatus" class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Click the button below to get your current location.
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Latitude:</label>
+                    <input type="text" class="form-control" id="currentLat" readonly placeholder="Not set">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Longitude:</label>
+                    <input type="text" class="form-control" id="currentLon" readonly placeholder="Not set">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Estimated Address:</label>
+                    <textarea class="form-control" id="locationAddress" rows="2" readonly
+                              placeholder="Address will appear here"></textarea>
+                </div>
+
+                <div class="d-grid">
+                    <button type="button" class="btn btn-success" id="getLocationBtn">
+                        <i class="bi bi-crosshair"></i> Get My Current Location
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="modal-footer" style="background-color:#f3fff3;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    let userLocation = { lat: null, lon: null };
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const lat = localStorage.getItem('userLat');
+        const lon = localStorage.getItem('userLon');
+
+        if (lat && lon) {
+            updateLocationDisplay(parseFloat(lat), parseFloat(lon));
+        }
+    });
+
+    document.getElementById('getLocationBtn').addEventListener('click', () => {
+        const status = document.getElementById('locationStatus');
+
+        if (!navigator.geolocation) {
+            status.className = 'alert alert-danger';
+            status.innerHTML = 'Geolocation is not supported by your browser.';
+            return;
+        }
+
+        status.className = 'alert alert-info';
+        status.innerHTML = 'Getting your location...';
+
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+
+                localStorage.setItem('userLat', lat);
+                localStorage.setItem('userLon', lon);
+
+                updateLocationDisplay(lat, lon);
+                reverseGeocode(lat, lon);
+
+                status.className = 'alert alert-success';
+                status.innerHTML = 'Location retrieved successfully!';
+            },
+            () => {
+                status.className = 'alert alert-danger';
+                status.innerHTML = 'Unable to retrieve location.';
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    });
+
+    function updateLocationDisplay(lat, lon) {
+        document.getElementById('currentLat').value = lat.toFixed(6);
+        document.getElementById('currentLon').value = lon.toFixed(6);
+    }
+
+    function reverseGeocode(lat, lon) {
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('locationAddress').value =
+                    data.display_name || 'Address not found';
+            })
+            .catch(() => {
+                document.getElementById('locationAddress').value =
+                    'Unable to retrieve address';
+            });
+    }
+
+    document.getElementById('sortSelect').addEventListener('change', function () {
+        const sort = this.value;
+
+        if (sort === 'nearest') {
+            const lat = localStorage.getItem('userLat');
+            const lon = localStorage.getItem('userLon');
+
+            if (lat && lon) {
+                window.location.href =
+                    `/parking-lots?sort=nearest&userLat=${lat}&userLon=${lon}`;
+            } else {
+                alert('Please set your location first.');
+            }
+        } else {
+            window.location.href = `/parking-lots?sort=${sort}`;
+        }
+    });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
