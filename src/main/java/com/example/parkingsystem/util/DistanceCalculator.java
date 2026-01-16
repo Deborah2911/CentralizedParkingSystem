@@ -6,15 +6,11 @@ package com.example.parkingsystem. util;
  */
 public class DistanceCalculator {
 
-    // Step 1: Create a private static instance of the class
     private static DistanceCalculator instance;
 
-    // Step 2: Make the constructor private so no one can instantiate it from outside
     private DistanceCalculator() {
-        // Private constructor prevents external instantiation
     }
 
-    // Step 3: Provide a public static method to get the single instance
     public static DistanceCalculator getInstance() {
         if (instance == null) {
             instance = new DistanceCalculator();
@@ -32,10 +28,10 @@ public class DistanceCalculator {
      */
     public double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
         if (lat2 == null || lon2 == null) {
-            return Double.MAX_VALUE; // Put parking lots without coordinates at the end
+            return Double.MAX_VALUE;
         }
 
-        final int EARTH_RADIUS = 6371; // Radius in kilometers
+        final int EARTH_RADIUS = 6371;
 
         double latDistance = Math.toRadians(lat2 - lat1);
         double lonDistance = Math.toRadians(lon2 - lon1);
