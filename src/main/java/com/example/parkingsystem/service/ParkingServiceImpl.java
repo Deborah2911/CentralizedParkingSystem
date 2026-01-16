@@ -1,7 +1,7 @@
 package com.example.parkingsystem.service;
 
 import com.example.parkingsystem.model.ParkingLot;
-import com.example.parkingsystem.util.DistanceCalculator;  // ADD THIS IMPORT
+import com.example.parkingsystem.util.DistanceCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.parkingsystem.repository.ParkingRepoI;
@@ -56,13 +56,10 @@ public class ParkingServiceImpl implements  ParkingServiceI {
                 break;
             case "nearest":
                 if (userLat != null && userLon != null) {
-                    // Get the singleton instance
                     DistanceCalculator calculator = DistanceCalculator.getInstance();
 
-                    // Calculate and SET distance for each lot
                     for (ParkingLot lot : lots) {
                         if (lot.getLatitude() != null && lot.getLongitude() != null) {
-                            // USE THE SINGLETON to calculate distance
                             double dist = calculator.calculateDistance(userLat, userLon,
                                     lot.getLatitude(), lot.getLongitude());
                             lot.setDistance(dist);
