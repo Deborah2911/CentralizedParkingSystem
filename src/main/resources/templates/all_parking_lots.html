@@ -116,8 +116,9 @@
                         <strong>Total spots:</strong>
                         <span th:text="${lot.spots}">0</span><br>
 
-                        <strong>Free spots:</strong>
-                        <span th:text="${lot.freeSpots}">0</span><br>
+                        <span th:classappend="${lot.freeSpots == 0} ? 'text-danger' : ''">
+                        <strong>Free spots:</strong>&nbsp;<span th:text="${lot.freeSpots}">0</span>
+                        </span><br>
 
                         <strong>Price:</strong>
                         RON <span th:text="${lot.price}">0.00</span>/hr
