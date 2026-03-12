@@ -48,7 +48,7 @@ public class ParkingSystemController{
         }
 
         model.addAttribute("parkingLots", parkingLots);
-        model.addAttribute("currentSort", sort != null ? sort :  "nearest");
+        model.addAttribute("currentSort", sort != null ? sort :  "name");
         return "all_parking_lots";
     }
 
