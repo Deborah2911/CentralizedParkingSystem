@@ -24,4 +24,6 @@ public class UserServiceImpl implements UserServiceI {
     public User getUser(String username) {
         return userRepo.findByUsername(username);
     }
+
+    public float getMoneySpent(String username) {return userRepo.getMoneySpentByUsername(username);}
 }

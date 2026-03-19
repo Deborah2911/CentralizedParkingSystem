@@ -33,6 +33,14 @@
             border: 1px solid #b2d8b2;
             border-radius: 12px;
             padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: #3a7f3a;
+            box-shadow: 0 6px 20px rgba(58, 127, 58, 0.2);
+            transform: translateY(-5px);
         }
 
         .card-body {
@@ -48,6 +56,42 @@
         .container {
             max-width: 1300px;
         }
+
+        .card-action-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover .card-action-btn {
+            opacity: 1;
+        }
+
+        .card-wrapper {
+            position: relative;
+        }
+
+        .modal-bill-display {
+            background-color: #e8f5e9;
+            border-left: 4px solid #3a7f3a;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .bill-amount {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2f5f2f;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 
@@ -55,9 +99,17 @@
 
 <div class="container py-4">
 
-    <!-- Logout -->
-    <div class="text-end mb-2">
-        <a href="/login" class="btn btn-danger">Logout</a>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div>
+            <a href="#" class="btn btn-outline-success"
+               data-bs-toggle="modal" data-bs-target="#locationModal">
+                <i class="bi bi-geo-alt-fill"></i> My Location
+            </a>
+        </div>
+        <div>
+            <a href="/login" class="btn btn-danger">Logout</a>
+        </div>
     </div>
 
     <div class="page-header">
@@ -75,7 +127,7 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- Sort + Location -->
+    <!-- Sort + My Bills -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <label for="sortSelect" class="form-label fw-bold">Sort by:</label>
@@ -88,10 +140,8 @@
         </div>
 
         <div>
-            <span class="fw-bold">My Location:</span>
-            <a href="#" class="text-decoration-none ms-1" style="color:#3a7f3a;"
-               data-bs-toggle="modal" data-bs-target="#locationModal">
-                Click here
+            <a href="/my-bills" class="btn btn-info">
+                <i class="bi bi-file-earmark-text"></i> My Bills
             </a>
         </div>
     </div>
@@ -99,13 +149,19 @@
     <!-- Parking cards -->
     <div class="row g-4 justify-content-center">
         <div class="col-md-5 col-lg-4" th:each="lot : ${parkingLots}">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm card-wrapper"
+                 data-bs-toggle="modal"
+                 data-bs-target="#billModal"
+                 th:data-lot-id="${lot.id}"
+                 th:data-lot-name="${lot.name}"
+                 th:data-lot-price="${lot.price}">
                 <div class="card-body">
                     <h5 class="card-title" th:text="${lot.name}">Parking Name</h5>
 
                     <p class="card-text">
                         <a th:href="${lot.location}" target="_blank"
-                           th:text="${lot.location}">Location</a><br>
+                           th:text="${lot.location}"
+                           onclick="event.stopPropagation()">Location</a><br>
 
                         <span th:if="${lot.distance != null}"
                               class="badge bg-info text-dark">
@@ -123,6 +179,10 @@
                         <strong>Price:</strong>
                         RON <span th:text="${lot.price}">0.00</span>/hr
                     </p>
+
+                    <div class="card-action-btn">
+                        <i class="bi bi-calculator-fill" style="font-size: 1.5rem; color: #3a7f3a;"></i>
+                    </div>
                 </div>
             </div>
         </div>
@@ -143,9 +203,7 @@
 
             <div class="modal-body">
 
-                <div id="locationStatus" class="alert alert-info">
-                    <i class="bi bi-info-circle"></i> Click the button below to get your current location.
-                </div>
+                <div id="locationStatus"></div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">Latitude:</label>
@@ -181,9 +239,84 @@
     </div>
 </div>
 
+<!-- Bill Calculator Modal -->
+<div class="modal fade" id="billModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header" style="background-color:#f3fff3;">
+                <h5 class="modal-title" style="color:#2f5f2f;">
+                    <i class="bi bi-calculator-fill"></i> Calculate Parking Bill
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Parking Lot:</label>
+                    <div class="alert alert-light border">
+                        <strong id="billLotName">-</strong>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Price per Hour:</label>
+                    <div class="alert alert-light border">
+                        RON <span id="billPrice">0.00</span>/hr
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="mb-3">
+                    <label for="hoursInput" class="form-label fw-bold">
+                        <i class="bi bi-clock"></i> Hours Spent at Parking:
+                    </label>
+                    <input type="number"
+                           id="hoursInput"
+                           class="form-control form-control-lg"
+                           min="0"
+                           max="999"
+                           step="1"
+                           value="0"
+                           placeholder="Enter hours">
+                </div>
+
+                <hr>
+
+                <div class="modal-bill-display">
+                    <div class="text-center">
+                        <p class="mb-2" style="color: #666;">Total Amount Due:</p>
+                        <div class="bill-amount">RON <span id="totalBill">0.00</span></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer" style="background-color:#f3fff3;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+                <button type="button" class="btn btn-success" id="confirmBillBtn">
+                    <i class="bi bi-check-circle"></i> Confirm & Save
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <!-- JavaScript -->
 <script>
     let userLocation = { lat: null, lon: null };
+    let currentBill = {
+        lotId: null,
+        lotName: null,
+        lotPrice: null,
+        hours: 0,
+        totalAmount: 0
+    };
 
     window.addEventListener('DOMContentLoaded', () => {
         const lat = localStorage.getItem('userLat');
@@ -194,6 +327,7 @@
         }
     });
 
+    // Location Modal Logic
     document.getElementById('getLocationBtn').addEventListener('click', () => {
         const status = document.getElementById('locationStatus');
 
@@ -262,6 +396,75 @@
         } else {
             window.location.href = `/parking-lots?sort=${sort}`;
         }
+    });
+
+    // Bill Modal Logic
+    const billModal = document.getElementById('billModal');
+
+    billModal.addEventListener('show.bs.modal', (event) => {
+        const card = event.relatedTarget;
+
+        const lotId = card.getAttribute('data-lot-id');
+        const lotName = card.getAttribute('data-lot-name');
+        const lotPrice = card.getAttribute('data-lot-price');
+
+        currentBill.lotId = lotId;
+        currentBill.lotName = lotName;
+        currentBill.lotPrice = parseFloat(lotPrice);
+
+        document.getElementById('billLotName').textContent = lotName;
+        document.getElementById('billPrice').textContent = parseFloat(lotPrice).toFixed(2);
+
+        document.getElementById('hoursInput').value = '0';
+        calculateBill();
+    });
+
+    document.getElementById('hoursInput').addEventListener('input', function() {
+        let value = this.value;
+
+        value = value.replace(/[^\d]/g, '');
+
+        let intValue = parseInt(value) || 0;
+
+        if (intValue > 999) {
+            intValue = 0;
+        }
+
+        this.value = intValue;
+        calculateBill();
+    });
+
+    function calculateBill() {
+        const hours = parseInt(document.getElementById('hoursInput').value) || 0;
+        const price = currentBill.lotPrice;
+        const total = (hours * price).toFixed(2);
+
+        currentBill.hours = hours;
+        currentBill.totalAmount = parseFloat(total);
+
+        document.getElementById('totalBill').textContent = total;
+    }
+
+    document.getElementById('confirmBillBtn').addEventListener('click', () => {
+        if (currentBill.hours === 0) {
+            alert('Please enter the number of hours spent at this parking lot.');
+            return;
+        }
+
+        // Store billing data in variable
+        const billingData = {
+            parkingLotId: currentBill.lotId,
+            parkingLotName: currentBill.lotName,
+            pricePerHour: currentBill.lotPrice,
+            hoursSpent: currentBill.hours,
+            totalAmount: currentBill.totalAmount,
+            timestamp: new Date().toISOString()
+        };
+
+        console.log('Billing Data:', billingData);
+
+
+        bootstrap.Modal.getInstance(billModal).hide();
     });
 </script>
 

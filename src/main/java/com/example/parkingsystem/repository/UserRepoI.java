@@ -5,4 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepoI extends JpaRepository<User, Integer> {
     User findByUsername(String username);
+    float getMoneySpentByUsername(String username);
 }

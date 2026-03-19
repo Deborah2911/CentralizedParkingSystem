@@ -14,6 +14,16 @@ public class User {
 
     private int role;
 
+    private float moneySpent=0;
+
+    public float getMoneySpent() {
+        return moneySpent;
+    }
+
+    public void setMoneySpent(float moneySpent) {
+        this.moneySpent = moneySpent;
+    }
+
     public int getRole() {
         return role;
     }

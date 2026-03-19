@@ -36,9 +36,6 @@ public class ParkingSystemController{
             @RequestParam(required = false) Double userLon,
             Model model) {
 
-        // ADD THIS DEBUG LINE
-        System.out.println("DEBUG - Sort: " + sort + ", UserLat: " + userLat + ", UserLon: " + userLon);
-
         List<ParkingLot> parkingLots;
 
         if (sort != null) {
@@ -82,8 +79,14 @@ public class ParkingSystemController{
 
     @PostMapping("/signup")
     public String processSignup(@ModelAttribute("user") User user, Model model) {
-         userService.createUser(user);
-        return "redirect:/login";
+        if(userService.usernameTaken(user.getUsername())) {
+            userService.createUser(user);
+            return "redirect:/login";
+        }
+        else{
+            model.addAttribute("signupError", "Username is already taken. Please choose another.");
+        }
+        return "signup";
     }
 
     @GetMapping("/parkinglot")
