@@ -41,6 +41,11 @@ public class ParkingServiceImpl implements  ParkingServiceI {
     }
 
     @Override
+    public ParkingLot getParkingLotById(Integer id) {
+        return parkingRepo.findById(id).orElse(null);
+    }
+
+    @Override
     public List<ParkingLot> getSortedLots(String sortBy, Double userLat, Double userLon) {
         List<ParkingLot> lots = parkingRepo.findAll();
 

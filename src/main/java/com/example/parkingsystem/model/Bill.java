@@ -23,6 +23,9 @@ public class Bill {
     @Column(name = "date_issued")
     private LocalDateTime dateIssued;
 
+    @Transient
+    private String parkingLotName;
+
     public Bill() {
     }
 
@@ -64,5 +67,13 @@ public class Bill {
 
     public void setDateIssued(LocalDateTime dateIssued) {
         this.dateIssued = dateIssued;
+    }
+
+    public String getParkingLotName() {
+        return parkingLotName;
+    }
+
+    public void setParkingLotName(String parkingLotName) {
+        this.parkingLotName = parkingLotName;
     }
 }

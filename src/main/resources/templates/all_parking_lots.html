@@ -447,24 +447,35 @@
 
     document.getElementById('confirmBillBtn').addEventListener('click', () => {
         if (currentBill.hours === 0) {
-            alert('Please enter the number of hours spent at this parking lot.');
+            alert('Enter the number of hours spent at this parking lot.');
             return;
         }
 
-        // Store billing data in variable
         const billingData = {
             parkingLotId: currentBill.lotId,
-            parkingLotName: currentBill.lotName,
-            pricePerHour: currentBill.lotPrice,
-            hoursSpent: currentBill.hours,
-            totalAmount: currentBill.totalAmount,
-            timestamp: new Date().toISOString()
+            moneyAmount: currentBill.totalAmount
         };
 
-        console.log('Billing Data:', billingData);
-
-
-        bootstrap.Modal.getInstance(billModal).hide();
+        fetch('/save-bill', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(billingData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert('Bill successfully saved!');
+                    bootstrap.Modal.getInstance(billModal).hide();
+                } else {
+                    alert('Session expired or error occurred. Please log in again.');
+                    window.location.href = '/login';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to connect to the server.');
+            });
     });
 </script>
 

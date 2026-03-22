@@ -1,18 +1,18 @@
 package com.example.parkingsystem.controller;
 
 
+import com.example.parkingsystem.model.Bill;
 import com.example.parkingsystem.model.ParkingLot;
 import com.example.parkingsystem.model.User;
+import com.example.parkingsystem.service.BillServiceImpl;
 import com.example.parkingsystem.service.UserServiceImpl;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 import com.example.parkingsystem.service.ParkingServiceImpl;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
@@ -25,6 +25,9 @@ public class ParkingSystemController{
 
     @Autowired
     private UserServiceImpl userService;
+
+    @Autowired
+    private BillServiceImpl billService;
 
     @GetMapping("/")
     public String home() { return "redirect:/login"; }
@@ -56,9 +59,13 @@ public class ParkingSystemController{
     }
 
     @PostMapping("/login")
-    public String processLogin(@ModelAttribute("user") User user, Model model) {
+    public String processLogin(@ModelAttribute("user") User user, HttpSession session, Model model) {
         User dbUser = userService.getUser(user.getUsername());
         if (dbUser != null && dbUser.getPassword().equals(user.getPassword())) {
+
+            // SAVE THE LOGGED-IN USER TO THE SESSION
+            session.setAttribute("loggedInUser", dbUser);
+
             if (dbUser.getRole() == 1) {
                 return "redirect:/parking-lots";
             } else if (dbUser.getRole() == 2) {
@@ -129,5 +136,42 @@ public class ParkingSystemController{
             redirectAttributes.addFlashAttribute("errorMessage", "Failed to add parking lot:  " + e.getMessage());
         }
         return "redirect:/add";
+    }
+
+    @PostMapping("/save-bill")
+    @ResponseBody
+    public ResponseEntity<?> saveBill(@RequestBody Bill bill, HttpSession session) {
+        User loggedInUser = (User) session.getAttribute("loggedInUser");
+        if (loggedInUser == null) {
+            return ResponseEntity.status(401).body("Unauthorized: Please log in first.");
+        }
+
+        bill.setUserId(loggedInUser.getId());
+        bill.setDateIssued(java.time.LocalDateTime.now());
+        billService.saveBill(bill);
+
+        return ResponseEntity.ok("Bill saved successfully");
+    }
+
+    @GetMapping("/my-bills")
+    public String showMyBills(HttpSession session, Model model) {
+        User loggedInUser = (User) session.getAttribute("loggedInUser");
+        if (loggedInUser == null) {
+            return "redirect:/login";
+        }
+
+        List<Bill> bills = billService.getBillsByUserId(loggedInUser.getId());
+
+        for (Bill bill : bills) {
+            ParkingLot lot = parkingService.getParkingLotById(bill.getParkingLotId());
+            if (lot != null) {
+                bill.setParkingLotName(lot.getName());
+            } else {
+                bill.setParkingLotName("Unknown Location"); // Fallback if lot was deleted
+            }
+        }
+
+        model.addAttribute("bills", bills);
+        return "my_bills";
     }
 }
