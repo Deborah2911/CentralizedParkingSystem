@@ -23,6 +23,9 @@ public class Bill {
     @Column(name = "date_issued")
     private LocalDateTime dateIssued;
 
+    @Column(name = "time_spent_hours")
+    private Integer timeSpent;
+
     @Transient
     private String parkingLotName;
 
@@ -75,5 +78,13 @@ public class Bill {
 
     public void setParkingLotName(String parkingLotName) {
         this.parkingLotName = parkingLotName;
+    }
+
+    public Integer getTimeSpent() {
+        return timeSpent;
+    }
+
+    public void setTimeSpent(Integer timeSpent) {
+        this.timeSpent = timeSpent;
     }
 }

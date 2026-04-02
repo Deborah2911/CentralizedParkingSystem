@@ -55,28 +55,28 @@
         <i class="bi bi-emoji-frown"></i> No bills registered yet.
     </div>
 
-    <div class="row g-4 justify-content-center" th:if="${not #lists.isEmpty(bills)}">
-        <div class="col-md-5 col-lg-4" th:each="bill : ${bills}">
-            <div class="card shadow-sm text-center">
-                <div class="card-body">
-                    <h4 class="card-title text-success mb-3">
-                        <i class="bi bi-receipt"></i> Parking Receipt
-                    </h4>
-
-                    <p class="card-text text-muted mb-1">
-                        <strong>Location:</strong> <span th:text="${bill.parkingLotName}"></span>
-                    </p>
-                    <p class="card-text text-muted mb-3">
-                        <strong>Date Issued:</strong> <span th:text="${#temporals.format(bill.dateIssued, 'dd-MM-yyyy HH:mm')}"></span>
-                    </p>
-
-                    <div style="background-color: #e8f5e9; border-radius: 6px; padding: 15px;">
-                        <p class="mb-0 text-secondary">Total Paid:</p>
-                        <div class="bill-amount">RON <span th:text="${#numbers.formatDecimal(bill.moneyAmount, 1, 2)}">0.00</span></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="table-responsive" th:if="${not #lists.isEmpty(bills)}">
+        <table class="table table-hover table-bordered">
+            <thead class="table-success">
+            <tr>
+                <th>Location</th>
+                <th>Date Issued</th>
+                <th>Time Spent (hours)</th>
+                <th>Total Paid (RON)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="bill : ${bills}">
+                <td th:text="${bill.parkingLotName}"></td>
+                <td th:text="${#temporals.format(bill.dateIssued, 'dd-MM-yyyy HH:mm')}"></td>
+                <td>
+                    <span th:if="${bill.timeSpent != null}" th:text="${bill.timeSpent}"></span>
+                    <span th:if="${bill.timeSpent == null}">N/A</span>
+                </td>
+                <td><strong><span th:text="${#numbers.formatDecimal(bill.moneyAmount, 1, 2)}">0.00</span></strong></td>
+            </tr>
+            </tbody>
+        </table>
     </div>
 
 </div>

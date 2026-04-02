@@ -453,7 +453,8 @@
 
         const billingData = {
             parkingLotId: currentBill.lotId,
-            moneyAmount: currentBill.totalAmount
+            moneyAmount: currentBill.totalAmount,
+            timeSpent: currentBill.hours  // Time spent in hours
         };
 
         fetch('/save-bill', {

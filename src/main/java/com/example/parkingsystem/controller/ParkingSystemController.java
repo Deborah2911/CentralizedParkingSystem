@@ -63,7 +63,6 @@ public class ParkingSystemController{
         User dbUser = userService.getUser(user.getUsername());
         if (dbUser != null && dbUser.getPassword().equals(user.getPassword())) {
 
-            // SAVE THE LOGGED-IN USER TO THE SESSION
             session.setAttribute("loggedInUser", dbUser);
 
             if (dbUser.getRole() == 1) {
