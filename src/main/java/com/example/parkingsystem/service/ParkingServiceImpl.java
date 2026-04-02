@@ -15,6 +15,9 @@ public class ParkingServiceImpl implements  ParkingServiceI {
     @Autowired
     private ParkingRepoI parkingRepo;
 
+    @Autowired
+    private DistanceCalculator distanceCalculator;
+
     @Override
     public List<ParkingLot> getAllLots() {
         return parkingRepo.findAll();
@@ -61,15 +64,9 @@ public class ParkingServiceImpl implements  ParkingServiceI {
                 break;
             case "nearest":
                 if (userLat != null && userLon != null) {
-                    DistanceCalculator calculator = DistanceCalculator.getInstance();
 
-                    for (ParkingLot lot : lots) {
-                        if (lot.getLatitude() != null && lot.getLongitude() != null) {
-                            double dist = calculator.calculateDistance(userLat, userLon,
-                                    lot.getLatitude(), lot.getLongitude());
-                            lot.setDistance(dist);
-                        }
-                    }
+                    distanceCalculator.calculateAndSetDistances(userLat, userLon, lots);
+
                     lots.sort(Comparator.comparingDouble(lot ->
                             lot.getDistance() != null ? lot.getDistance() : Double.MAX_VALUE
                     ));
