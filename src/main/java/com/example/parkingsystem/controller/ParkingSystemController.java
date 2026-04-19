@@ -14,7 +14,9 @@ import org.springframework.ui.Model;
 import com.example.parkingsystem.service.ParkingServiceImpl;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
+import com.example.parkingsystem.service.StatisticsServiceImpl;
+import java.time.LocalDate;
+import java.util.Map;
 import java.util.List;
 
 @Controller
@@ -28,6 +30,9 @@ public class ParkingSystemController{
 
     @Autowired
     private BillServiceImpl billService;
+
+    @Autowired
+    private StatisticsServiceImpl statisticsService;
 
     @GetMapping("/")
     public String home() { return "redirect:/login"; }
@@ -105,7 +110,17 @@ public class ParkingSystemController{
             return "login";
         }
 
+        // Get current year and today's date for statistics
+        int currentYear = LocalDate.now().getYear();
+        LocalDate today = LocalDate.now();
+
+        // Get monthly and hourly statistics
+        Map<Integer, Integer> monthlyStats = statisticsService.getMonthlyStats(parkingLot.getId(), currentYear);
+        Map<Integer, Integer> hourlyStats = statisticsService.getHourlyStats(parkingLot.getId(), today);
+
         model.addAttribute("parkingLot", parkingLot);
+        model.addAttribute("monthlyStats", monthlyStats);
+        model.addAttribute("hourlyStats", hourlyStats);
         return "manageParkingLot";
     }
 
@@ -145,8 +160,11 @@ public class ParkingSystemController{
             return ResponseEntity.status(401).body("Unauthorized: Please log in first.");
         }
 
+        if (bill.getDateIssued() == null) {
+            return ResponseEntity.badRequest().body("Date and time are required.");
+        }
+
         bill.setUserId(loggedInUser.getId());
-        bill.setDateIssued(java.time.LocalDateTime.now());
         billService.saveBill(bill);
 
         return ResponseEntity.ok("Bill saved successfully");

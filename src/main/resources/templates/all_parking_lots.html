@@ -270,6 +270,16 @@
                 <hr>
 
                 <div class="mb-3">
+                    <label for="dateTimeInput" class="form-label fw-bold">
+                        <i class="bi bi-calendar-event"></i> Date and Time Parked:
+                    </label>
+                    <input type="datetime-local"
+                           id="dateTimeInput"
+                           class="form-control form-control-lg"
+                           required>
+                </div>
+
+                <div class="mb-3">
                     <label for="hoursInput" class="form-label fw-bold">
                         <i class="bi bi-clock"></i> Hours Spent at Parking:
                     </label>
@@ -315,7 +325,8 @@
         lotName: null,
         lotPrice: null,
         hours: 0,
-        totalAmount: 0
+        totalAmount: 0,
+        dateTime: null
     };
 
     window.addEventListener('DOMContentLoaded', () => {
@@ -325,6 +336,15 @@
         if (lat && lon) {
             updateLocationDisplay(parseFloat(lat), parseFloat(lon));
         }
+
+        // Set default date-time to now
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('dateTimeInput').value = `${year}-${month}-${day}T${hours}:${minutes}`;
     });
 
     // Location Modal Logic
@@ -419,6 +439,12 @@
         calculateBill();
     });
 
+    document.getElementById('dateTimeInput').addEventListener('change', function() {
+        if (this.value) {
+            currentBill.dateTime = this.value;
+        }
+    });
+
     document.getElementById('hoursInput').addEventListener('input', function() {
         let value = this.value;
 
@@ -446,15 +472,26 @@
     }
 
     document.getElementById('confirmBillBtn').addEventListener('click', () => {
+        const dateTimeInput = document.getElementById('dateTimeInput').value;
+
+        if (!dateTimeInput) {
+            alert('Please select a date and time.');
+            return;
+        }
+
         if (currentBill.hours === 0) {
             alert('Enter the number of hours spent at this parking lot.');
             return;
         }
 
+        // Convert datetime-local to ISO 8601 format (add :00 for seconds)
+        const dateTimeISO = dateTimeInput + ':00';
+
         const billingData = {
             parkingLotId: currentBill.lotId,
             moneyAmount: currentBill.totalAmount,
-            timeSpent: currentBill.hours  // Time spent in hours
+            timeSpent: currentBill.hours,
+            dateIssued: dateTimeISO
         };
 
         fetch('/save-bill', {

@@ -5,25 +5,54 @@
     <title>Manage Parking Lot</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
             background-color: #f3fff3;
             font-family: Arial, sans-serif;
         }
-        .container {
+        .main-wrapper {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .top-bar {
+            position: relative;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        .top-bar h2 {
+            flex: 1;
+            text-align: center;
+            color: #2f5f2f;
+            margin: 0;
+
+            padding-left: 85px;
+        }
+        .logout-btn {
+            width: 85px;
+        }
+        .form-container {
             max-width: 700px;
-            margin-top: 40px;
+            margin: 20px auto 40px auto;
             background: #ffffff;
             padding: 30px;
             border-radius: 12px;
             border: 1px solid #b2d8b2;
             box-shadow: 0 3px 10px rgba(0,0,0,0.08);
         }
-        h2 {
+        .form-container h4 {
             text-align: center;
-            color: #2f5f2f;
+            color: #3a7f3a;
             margin-bottom: 25px;
+        }
+        h4 {
+            color: #3a7f3a;
+            margin-top: 30px;
+            margin-bottom: 20px;
+            text-align: center;
         }
         button {
             background-color: #4caf50;
@@ -32,15 +61,64 @@
         button:hover {
             background-color: #449d48;
         }
+        .alert {
+            max-width: 700px;
+            margin: 20px auto;
+        }
+        .charts-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        .chart-card {
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #b2d8b2;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+        .chart-card h5 {
+            color: #3a7f3a;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 350px;
+        }
+        @media (max-width: 1024px) {
+            .charts-wrapper {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .chart-container {
+                height: 300px;
+            }
+        }
+        @media (max-width: 768px) {
+            .form-container {
+                padding: 20px;
+                margin: 20px auto;
+            }
+            .chart-card {
+                padding: 15px;
+            }
+            .chart-container {
+                height: 250px;
+            }
+        }
     </style>
 </head>
 
 <body>
-<div class="container">
-        <div style="text-align: right; margin-bottom: 10px;">
-            <a href="/login" class="btn btn-danger">Logout</a>
-        </div>
-    <h2>Manage Parking Lot</h2>
+<div class="main-wrapper">
+    <div class="top-bar">
+        <h2>Manage Parking Lot</h2>
+        <a href="/login" class="btn btn-danger logout-btn">Logout</a>
+    </div>
 
     <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
         <span th:text="${successMessage}"></span>
@@ -52,38 +130,213 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 
-    <form th:action="@{/parkinglot}" th:object="${parkingLot}" method="post">
+    <!-- Management Form Section -->
+    <div class="form-container">
+        <h4>Parking Lot Information</h4>
+        <form th:action="@{/parkinglot}" th:object="${parkingLot}" method="post">
 
-        <!-- Hidden ID -->
-        <input type="hidden" th:field="*{id}"/>
-        <input type="hidden" th:field="*{managerId}"/>
-        <input type="hidden" th:field="*{latitude}"/>
-        <input type="hidden" th:field="*{longitude}"/>
-        <input type="hidden" th:field="*{location}"/>
+            <!-- Hidden ID -->
+            <input type="hidden" th:field="*{id}"/>
+            <input type="hidden" th:field="*{managerId}"/>
+            <input type="hidden" th:field="*{latitude}"/>
+            <input type="hidden" th:field="*{longitude}"/>
+            <input type="hidden" th:field="*{location}"/>
 
-        <div class="mb-3">
-            <label class="form-label">Parking Lot Name</label>
-            <input class="form-control" th:field="*{name}" required>
+            <div class="mb-3">
+                <label class="form-label">Parking Lot Name</label>
+                <input class="form-control" th:field="*{name}" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Total Spots</label>
+                <input type="number" min="0" class="form-control" th:field="*{spots}" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Free Spots</label>
+                <input type="number" min="0" class="form-control" th:field="*{freeSpots}" required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Price per Hour (RON)</label>
+                <input type="number" step="0.01" min="0" class="form-control" th:field="*{price}" required>
+            </div>
+
+            <button class="btn btn-success w-100 mt-3" type="submit">Update Parking Lot</button>
+        </form>
+    </div>
+
+    <!-- Statistics Section -->
+    <h4>📊 Parking Statistics</h4>
+
+    <div class="charts-wrapper">
+        <!-- Monthly Chart -->
+        <div class="chart-card">
+            <h5>Monthly Parking Activity (This Year)</h5>
+            <div class="chart-container">
+                <canvas id="monthlyChart"></canvas>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Total Spots</label>
-            <input type="number" min="0" class="form-control" th:field="*{spots}" required>
+        <!-- Hourly Chart -->
+        <div class="chart-card">
+            <h5>Today's Hourly Activity</h5>
+            <div class="chart-container">
+                <canvas id="hourlyChart"></canvas>
+            </div>
         </div>
+    </div>
 
-        <div class="mb-3">
-            <label class="form-label">Free Spots</label>
-            <input type="number" min="0" class="form-control" th:field="*{freeSpots}" required>
-        </div>
-
-        <div class="mb-3">
-            <label class="form-label">Price per Hour (RON)</label>
-            <input type="number" step="0.01" min="0" class="form-control" th:field="*{price}" required>
-        </div>
-
-        <button class="btn btn-success w-100 mt-3" type="submit">Update Parking Lot</button>
-    </form>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script th:inline="javascript">
+
+    const monthlyStatsData = /*[[${monthlyStats.values()}]]*/ [];
+    const hourlyStatsData = /*[[${hourlyStats.values()}]]*/ [];
+
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const hours = Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0') + ':00');
+
+    // Monthly Chart
+    const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+    new Chart(monthlyCtx, {
+        type: 'line',
+        data: {
+            labels: monthNames,
+            datasets: [{
+                label: 'Parking Sessions',
+                data: monthlyStatsData,
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                borderColor: 'rgba(76, 175, 80, 1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: 'rgba(76, 175, 80, 1)',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    onClick: null,
+                    labels: {
+                        font: {size: 12},
+                        color: '#2f5f2f',
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(76, 175, 80, 1)',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        color: '#666'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#666'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    // Hourly Chart
+    const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+    new Chart(hourlyCtx, {
+        type: 'bar',
+        data: {
+            labels: hours,
+            datasets: [{
+                label: 'Parking Sessions',
+                data: hourlyStatsData,
+                backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                borderColor: 'rgba(66, 133, 244, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    onClick: null,
+                    labels: {
+                        font: {size: 12},
+                        color: '#2f5f2f',
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: 'rgba(66, 133, 244, 1)',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        color: '#666'
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#666',
+                        font: {size: 10}
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+</script>
+
 </body>
 </html>
