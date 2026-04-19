@@ -110,11 +110,9 @@ public class ParkingSystemController{
             return "login";
         }
 
-        // Get current year and today's date for statistics
         int currentYear = LocalDate.now().getYear();
         LocalDate today = LocalDate.now();
 
-        // Get monthly and hourly statistics
         Map<Integer, Integer> monthlyStats = statisticsService.getMonthlyStats(parkingLot.getId(), currentYear);
         Map<Integer, Integer> hourlyStats = statisticsService.getHourlyStats(parkingLot.getId(), today);
 
@@ -160,8 +158,14 @@ public class ParkingSystemController{
             return ResponseEntity.status(401).body("Unauthorized: Please log in first.");
         }
 
+        // Validate dateIssued is provided
         if (bill.getDateIssued() == null) {
             return ResponseEntity.badRequest().body("Date and time are required.");
+        }
+
+        // Validate date is not in the future
+        if (bill.getDateIssued().isAfter(java.time.LocalDateTime.now())) {
+            return ResponseEntity.badRequest().body("Cannot create a bill with a future date. Please select a date and time in the past.");
         }
 
         bill.setUserId(loggedInUser.getId());
@@ -171,24 +175,49 @@ public class ParkingSystemController{
     }
 
     @GetMapping("/my-bills")
-    public String showMyBills(HttpSession session, Model model) {
+    public String showMyBills(
+            @RequestParam(required = false) String sort,
+            HttpSession session,
+            Model model) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
         if (loggedInUser == null) {
             return "redirect:/login";
         }
 
-        List<Bill> bills = billService.getBillsByUserId(loggedInUser.getId());
+        List<Bill> bills;
 
+        // Get bills with sorting
+        if (sort != null && !sort.isEmpty()) {
+            bills = billService.getSortedBills(loggedInUser.getId(), sort);
+        } else {
+            bills = billService.getSortedBills(loggedInUser.getId(), "date");
+        }
+
+        // Set parking lot names BEFORE sorting by location
         for (Bill bill : bills) {
             ParkingLot lot = parkingService.getParkingLotById(bill.getParkingLotId());
             if (lot != null) {
                 bill.setParkingLotName(lot.getName());
             } else {
-                bill.setParkingLotName("Unknown Location"); // Fallback if lot was deleted
+                bill.setParkingLotName("Unknown Location");
+            }
+        }
+
+        // Re-sort by location if needed (after setting parking lot names)
+        if (sort != null && sort.equals("location")) {
+            bills = billService.getSortedBills(loggedInUser.getId(), "location");
+            for (Bill bill : bills) {
+                ParkingLot lot = parkingService.getParkingLotById(bill.getParkingLotId());
+                if (lot != null) {
+                    bill.setParkingLotName(lot.getName());
+                } else {
+                    bill.setParkingLotName("Unknown Location");
+                }
             }
         }
 
         model.addAttribute("bills", bills);
+        model.addAttribute("currentSort", sort != null ? sort : "date");
         return "my_bills";
     }
 }

@@ -479,6 +479,15 @@
             return;
         }
 
+        // Validate date is not in the future
+        const selectedDateTime = new Date(dateTimeInput);
+        const now = new Date();
+
+        if (selectedDateTime > now) {
+            alert('Cannot create a bill with a future date. Please select a date and time in the past.');
+            return;
+        }
+
         if (currentBill.hours === 0) {
             alert('Enter the number of hours spent at this parking lot.');
             return;
@@ -506,8 +515,9 @@
                     alert('Bill successfully saved!');
                     bootstrap.Modal.getInstance(billModal).hide();
                 } else {
-                    alert('Session expired or error occurred. Please log in again.');
-                    window.location.href = '/login';
+                    return response.text().then(text => {
+                        alert(text);
+                    });
                 }
             })
             .catch(error => {

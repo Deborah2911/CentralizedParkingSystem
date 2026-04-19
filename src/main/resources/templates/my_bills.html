@@ -11,10 +11,17 @@
             background-color: #f3fff3;
             font-family: Arial, sans-serif;
         }
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
         .page-header {
             text-align: center;
             margin-top: 40px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
         .page-header h1 {
             color: #3a7f3a;
@@ -34,52 +41,119 @@
             font-weight: bold;
             color: #2f5f2f;
         }
+        .sort-controls {
+            background-color: #ffffff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #b2d8b2;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+        }
+        .sort-controls label {
+            font-weight: 600;
+            color: #3a7f3a;
+            margin: 0;
+            white-space: nowrap;
+        }
+        .sort-controls select {
+            border-color: #b2d8b2;
+            width: 220px;
+        }
+        .sort-controls select:focus {
+            border-color: #3a7f3a;
+            box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+        }
+        .sort-controls button {
+            margin-left: auto;
+        }
+        .no-results-msg {
+            text-align: center;
+            color: #666;
+            margin-top: 20px;
+        }
+        .table thead {
+            background-color: #e8f5e9;
+        }
+        .table-hover tbody tr:hover {
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 <body>
 
 <div class="container py-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="top-bar">
         <a href="/parking-lots" class="btn btn-outline-success">
             <i class="bi bi-arrow-left"></i> Back to Parking Lots
         </a>
-        <button id="exportPdfBtn" class="btn btn-primary">
-            <i class="bi bi-file-pdf"></i> Export to PDF
-        </button>
+        <h1 style="color: #3a7f3a; font-weight: bold; margin: 0; flex: 1; text-align: center;">My Bills</h1>
         <a href="/login" class="btn btn-danger">Logout</a>
-    </div>
-
-    <div class="page-header">
-        <h1>My Bills</h1>
     </div>
 
     <div th:if="${#lists.isEmpty(bills)}" class="alert alert-info text-center fs-4 mt-5 shadow-sm">
         <i class="bi bi-emoji-frown"></i> No bills registered yet.
     </div>
 
-    <div class="table-responsive" th:if="${not #lists.isEmpty(bills)}">
-        <table class="table table-hover table-bordered">
-            <thead class="table-success">
-            <tr>
-                <th>Location</th>
-                <th>Date Issued</th>
-                <th>Time Spent (hours)</th>
-                <th>Total Paid (RON)</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="bill : ${bills}">
-                <td th:text="${bill.parkingLotName}"></td>
-                <td th:text="${#temporals.format(bill.dateIssued, 'dd-MM-yyyy HH:mm')}"></td>
-                <td>
-                    <span th:if="${bill.timeSpent != null}" th:text="${bill.timeSpent}"></span>
-                    <span th:if="${bill.timeSpent == null}">N/A</span>
-                </td>
-                <td><strong><span th:text="${#numbers.formatDecimal(bill.moneyAmount, 1, 2)}">0.00</span></strong></td>
-            </tr>
-            </tbody>
-        </table>
+    <div th:if="${not #lists.isEmpty(bills)}">
+        <!-- Sort Controls with Export Button -->
+        <div class="sort-controls">
+            <label for="sortSelect">
+                <i class="bi bi-funnel"></i> Sort by:
+            </label>
+            <select id="sortSelect" class="form-select">
+                <option value="date" th:selected="${currentSort == 'date'}">
+                    Date (Newest First)
+                </option>
+                <option value="location" th:selected="${currentSort == 'location'}">
+                    Parking Lot (A-Z)
+                </option>
+                <option value="amount" th:selected="${currentSort == 'amount'}">
+                    Amount Spent (Highest First)
+                </option>
+            </select>
+            <button id="exportPdfBtn" class="btn btn-primary">
+                <i class="bi bi-file-pdf"></i> Export to PDF
+            </button>
+        </div>
+
+        <!-- Bills Table -->
+        <div class="table-responsive" style="margin-top: 20px;">
+            <table class="table table-hover table-bordered">
+                <thead class="table-success">
+                <tr>
+                    <th>
+                        <i class="bi bi-geo-alt"></i> Location
+                    </th>
+                    <th>
+                        <i class="bi bi-calendar-event"></i> Date Issued
+                    </th>
+                    <th>
+                        <i class="bi bi-clock"></i> Time Spent (hours)
+                    </th>
+                    <th>
+                        <i class="bi bi-currency-dollar"></i> Total Paid (RON)
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="bill : ${bills}">
+                    <td th:text="${bill.parkingLotName}"></td>
+                    <td th:text="${#temporals.format(bill.dateIssued, 'dd-MM-yyyy HH:mm')}"></td>
+                    <td>
+                        <span th:if="${bill.timeSpent != null}" th:text="${bill.timeSpent}"></span>
+                        <span th:if="${bill.timeSpent == null}">N/A</span>
+                    </td>
+                    <td>
+                        <strong><span th:text="${#numbers.formatDecimal(bill.moneyAmount, 1, 2)}">0.00</span></strong>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
 </div>
@@ -88,6 +162,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
+    // Sort dropdown listener
+    document.getElementById('sortSelect').addEventListener('change', function() {
+        const sort = this.value;
+        window.location.href = `/my-bills?sort=${sort}`;
+    });
+
+    // Export to PDF
     document.getElementById('exportPdfBtn').addEventListener('click', function() {
         const element = document.querySelector('.table-responsive');
         const opt = {
