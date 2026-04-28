@@ -5,6 +5,8 @@ import com.example.parkingsystem.util.DistanceCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.parkingsystem.repository.ParkingRepoI;
+
+import java.util.ArrayList;
 import java.util. Comparator;
 
 import java.util.List;
@@ -52,33 +54,46 @@ public class ParkingServiceImpl implements  ParkingServiceI {
     public List<ParkingLot> getSortedLots(String sortBy, Double userLat, Double userLon) {
         List<ParkingLot> lots = parkingRepo.findAll();
 
+        List<ParkingLot> availableLots = new ArrayList<>();      // freeSpots > 0
+        List<ParkingLot> fullLots = new ArrayList<>();            // freeSpots == 0
+
+        for (ParkingLot lot : lots) {
+            if (lot.getFreeSpots() > 0) {
+                availableLots.add(lot);
+            } else {
+                fullLots.add(lot);
+            }
+        }
+
+        // Sort only the available lots based on the sort criteria
         switch (sortBy) {
             case "name":
-                lots.sort(Comparator.comparing(ParkingLot::getName));
+                availableLots.sort(Comparator.comparing(ParkingLot::getName));
                 break;
             case "availability":
-                lots.sort(Comparator.comparing(ParkingLot::getFreeSpots).reversed());
+                availableLots.sort(Comparator.comparing(ParkingLot::getFreeSpots).reversed());
                 break;
             case "pricing":
-                lots.sort(Comparator.comparing(ParkingLot::getPrice));
+                availableLots.sort(Comparator.comparing(ParkingLot::getPrice));
                 break;
             case "nearest":
                 if (userLat != null && userLon != null) {
-
-                    distanceCalculator.calculateAndSetDistances(userLat, userLon, lots);
-
-                    lots.sort(Comparator.comparingDouble(lot ->
+                    distanceCalculator.calculateAndSetDistances(userLat, userLon, availableLots);
+                    availableLots.sort(Comparator.comparingDouble(lot ->
                             lot.getDistance() != null ? lot.getDistance() : Double.MAX_VALUE
                     ));
                 } else {
-                    lots.sort(Comparator.comparing(ParkingLot::getName));
+                    availableLots.sort(Comparator.comparing(ParkingLot::getName));
                 }
                 break;
             default:
-                lots. sort(Comparator.comparing(ParkingLot::getName));
+                availableLots.sort(Comparator.comparing(ParkingLot::getName));
                 break;
         }
 
-        return lots;
+        // Combine: available lots first, then full lots at the end
+        availableLots.addAll(fullLots);
+
+        return availableLots;
     }
 }

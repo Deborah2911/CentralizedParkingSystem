@@ -46,14 +46,12 @@ public class ParkingSystemController{
 
         List<ParkingLot> parkingLots;
 
-        if (sort != null) {
-            parkingLots = parkingService. getSortedLots(sort, userLat, userLon);
-        } else {
-            parkingLots = parkingService. getAllLots();
-        }
+        String sortBy = (sort != null && !sort.isEmpty()) ? sort : "name";
+
+        parkingLots = parkingService.getSortedLots(sortBy, userLat, userLon);
 
         model.addAttribute("parkingLots", parkingLots);
-        model.addAttribute("currentSort", sort != null ? sort :  "name");
+        model.addAttribute("currentSort", sortBy);
         return "all_parking_lots";
     }
 
