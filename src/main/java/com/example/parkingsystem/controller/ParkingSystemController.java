@@ -18,6 +18,7 @@ import com.example.parkingsystem.service.StatisticsServiceImpl;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Controller
 public class ParkingSystemController{
@@ -175,6 +176,8 @@ public class ParkingSystemController{
     @GetMapping("/my-bills")
     public String showMyBills(
             @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String month,
+            @RequestParam(required = false) String day,
             HttpSession session,
             Model model) {
         User loggedInUser = (User) session.getAttribute("loggedInUser");
@@ -182,16 +185,9 @@ public class ParkingSystemController{
             return "redirect:/login";
         }
 
-        List<Bill> bills;
+        List<Bill> bills = billService.getSortedBills(loggedInUser.getId(), sort != null ? sort : "date");
 
-        // Get bills with sorting
-        if (sort != null && !sort.isEmpty()) {
-            bills = billService.getSortedBills(loggedInUser.getId(), sort);
-        } else {
-            bills = billService.getSortedBills(loggedInUser.getId(), "date");
-        }
-
-        // Set parking lot names BEFORE sorting by location
+        // Set parking lot names
         for (Bill bill : bills) {
             ParkingLot lot = parkingService.getParkingLotById(bill.getParkingLotId());
             if (lot != null) {
@@ -201,20 +197,47 @@ public class ParkingSystemController{
             }
         }
 
-        // Re-sort by location if needed (after setting parking lot names)
-        if (sort != null && sort.equals("location")) {
-            bills = billService.getSortedBills(loggedInUser.getId(), "location");
-            for (Bill bill : bills) {
-                ParkingLot lot = parkingService.getParkingLotById(bill.getParkingLotId());
-                if (lot != null) {
-                    bill.setParkingLotName(lot.getName());
-                } else {
-                    bill.setParkingLotName("Unknown Location");
-                }
-            }
+        // Add aggregation data for dropdowns
+        Map<String, Double> monthlyTotals = billService.getMonthlyTotals(loggedInUser.getId());
+        Map<String, Double> dailyTotals = billService.getDailyTotals(loggedInUser.getId());
+
+        model.addAttribute("monthlyTotals", monthlyTotals);
+        model.addAttribute("dailyTotals", dailyTotals);
+
+        Double selectedTotal = 0.0;
+        String selectedLabel = "";
+
+        // If month is selected, filter bills and show total
+        if (month != null && !month.isEmpty()) {
+            String[] monthParts = month.split("-");
+            int year = Integer.parseInt(monthParts[0]);
+            int monthNum = Integer.parseInt(monthParts[1]);
+
+            bills = bills.stream()
+                    .filter(b -> b.getDateIssued() != null &&
+                            b.getDateIssued().getYear() == year &&
+                            b.getDateIssued().getMonthValue() == monthNum)
+                    .collect(Collectors.toList());
+
+            selectedTotal = monthlyTotals.getOrDefault(month, 0.0);
+            selectedLabel = month;
+            model.addAttribute("selectedMonth", month);
+        }
+        // If day is selected, filter bills and show total
+        else if (day != null && !day.isEmpty()) {
+            bills = bills.stream()
+                    .filter(b -> b.getDateIssued() != null &&
+                            b.getDateIssued().toLocalDate().toString().equals(day))
+                    .collect(Collectors.toList());
+
+            selectedTotal = dailyTotals.getOrDefault(day, 0.0);
+            selectedLabel = day;
+            model.addAttribute("selectedDay", day);
         }
 
         model.addAttribute("bills", bills);
+        model.addAttribute("selectedTotal", selectedTotal);
+        model.addAttribute("selectedLabel", selectedLabel);
         model.addAttribute("currentSort", sort != null ? sort : "date");
         return "my_bills";
     }

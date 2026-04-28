@@ -51,6 +51,7 @@
             align-items: center;
             gap: 12px;
             width: 100%;
+            flex-wrap: wrap;
         }
         .sort-controls label {
             font-weight: 600;
@@ -60,7 +61,7 @@
         }
         .sort-controls select {
             border-color: #b2d8b2;
-            width: 220px;
+            min-width: 180px;
         }
         .sort-controls select:focus {
             border-color: #3a7f3a;
@@ -68,6 +69,40 @@
         }
         .sort-controls button {
             margin-left: auto;
+        }
+        .filter-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .filter-section label {
+            font-weight: 600;
+            color: #3a7f3a;
+            margin: 0;
+            white-space: nowrap;
+        }
+        .filter-section select {
+            border-color: #b2d8b2;
+            min-width: 200px;
+        }
+        .filter-section select:focus {
+            border-color: #3a7f3a;
+            box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+        }
+        .clear-filter-btn {
+            background-color: #3a7f3a;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .clear-filter-btn:hover {
+            background-color: #2f5f2f;
+            color: white;
         }
         .no-results-msg {
             text-align: center;
@@ -120,6 +155,41 @@
             </button>
         </div>
 
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <label for="monthSelect">
+                <i class="bi bi-calendar-month"></i> Month:
+            </label>
+            <select id="monthSelect" class="form-select">
+                <option value="">All Months</option>
+                <th:block th:each="entry : ${monthlyTotals.entrySet()}">
+                    <option th:value="${entry.getKey()}"
+                            th:selected="${selectedMonth == entry.getKey()}">
+                        <span th:text="${entry.getKey()}"></span> - <span th:text="${#numbers.formatDecimal(entry.getValue(), 1, 2)}"></span> RON
+                    </option>
+                </th:block>
+            </select>
+
+            <label for="daySelect" style="margin-left: 15px;">
+                <i class="bi bi-calendar-day"></i> Day:
+            </label>
+            <select id="daySelect" class="form-select">
+                <option value="">All Days</option>
+                <th:block th:each="entry : ${dailyTotals.entrySet()}">
+                    <option th:value="${entry.getKey()}"
+                            th:selected="${selectedDay == entry.getKey()}">
+                        <span th:text="${entry.getKey()}"></span> - <span th:text="${#numbers.formatDecimal(entry.getValue(), 1, 2)}"></span> RON
+                    </option>
+                </th:block>
+            </select>
+
+            <th:block th:if="${selectedTotal > 0}">
+                <button id="clearFilterBtn" class="clear-filter-btn">
+                    <i class="bi bi-x-circle"></i> Clear Filter
+                </button>
+            </th:block>
+        </div>
+
         <!-- Bills Table -->
         <div class="table-responsive" style="margin-top: 20px;">
             <table class="table table-hover table-bordered">
@@ -154,6 +224,10 @@
                 </tbody>
             </table>
         </div>
+
+        <div th:if="${#lists.isEmpty(bills)}" class="no-results-msg">
+            <p>No bills found for the selected period.</p>
+        </div>
     </div>
 
 </div>
@@ -165,8 +239,53 @@
     // Sort dropdown listener
     document.getElementById('sortSelect').addEventListener('change', function() {
         const sort = this.value;
-        window.location.href = `/my-bills?sort=${sort}`;
+        const params = new URLSearchParams(window.location.search);
+        params.set('sort', sort);
+        window.location.href = `/my-bills?${params.toString()}`;
     });
+
+    // Month selector listener
+    document.getElementById('monthSelect').addEventListener('change', function() {
+        const month = this.value;
+        const params = new URLSearchParams(window.location.search);
+
+        if (month) {
+            params.delete('day');
+            params.set('month', month);
+        } else {
+            params.delete('month');
+            params.delete('day');
+        }
+
+        window.location.href = `/my-bills?${params.toString()}`;
+    });
+
+    // Day selector listener
+    document.getElementById('daySelect').addEventListener('change', function() {
+        const day = this.value;
+        const params = new URLSearchParams(window.location.search);
+
+        if (day) {
+            params.delete('month');
+            params.set('day', day);
+        } else {
+            params.delete('month');
+            params.delete('day');
+        }
+
+        window.location.href = `/my-bills?${params.toString()}`;
+    });
+
+    // Clear filter button
+    const clearBtn = document.getElementById('clearFilterBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            const params = new URLSearchParams(window.location.search);
+            params.delete('month');
+            params.delete('day');
+            window.location.href = `/my-bills?${params.toString()}`;
+        });
+    }
 
     // Export to PDF
     document.getElementById('exportPdfBtn').addEventListener('click', function() {
