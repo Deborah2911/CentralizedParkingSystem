@@ -131,43 +131,49 @@
     </div>
 
     <!-- Management Form Section -->
+    <!-- Management Form Section -->
     <div class="form-container">
         <h4>Parking Lot Information</h4>
-        <form th:action="@{/parkinglot}" th:object="${parkingLot}" method="post">
+        <form id="parkingLotForm" th:object="${parkingLot}">
 
             <!-- Hidden ID -->
-            <input type="hidden" th:field="*{id}"/>
-            <input type="hidden" th:field="*{managerId}"/>
-            <input type="hidden" th:field="*{latitude}"/>
-            <input type="hidden" th:field="*{longitude}"/>
-            <input type="hidden" th:field="*{location}"/>
+            <input type="hidden" id="parkingLotId" th:value="*{id}"/>
+            <input type="hidden" id="managerId" th:value="*{managerId}"/>
+            <input type="hidden" id="parkingLotLatitude" th:value="*{latitude}"/>
+            <input type="hidden" id="parkingLotLongitude" th:value="*{longitude}"/>
+            <input type="hidden" id="parkingLotLocation" th:value="*{location}"/>
 
             <div class="mb-3">
                 <label class="form-label">Parking Lot Name</label>
-                <input class="form-control" th:field="*{name}" required>
+                <input class="form-control" id="parkingLotName" th:value="*{name}" required>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Total Spots</label>
-                <input type="number" min="0" class="form-control" th:field="*{spots}" required>
+                <input type="number" min="0" class="form-control" id="parkingLotSpots" th:value="*{spots}" required>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Free Spots</label>
-                <input type="number" min="0" class="form-control" th:field="*{freeSpots}" required>
+                <input type="number" min="0" class="form-control" id="parkingLotFreeSpots" th:value="*{freeSpots}" required>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Price per Hour (RON)</label>
-                <input type="number" step="0.01" min="0" class="form-control" th:field="*{price}" required>
+                <input type="number" step="0.01" min="0" class="form-control" id="parkingLotPrice" th:value="*{price}" required>
             </div>
 
-            <button class="btn btn-success w-100 mt-3" type="submit">Update Parking Lot</button>
+            <button class="btn btn-success w-100 mt-3" type="button" id="updateParkingLotBtn">Update Parking Lot</button>
         </form>
     </div>
 
     <!-- Statistics Section -->
     <h4>📊 Parking Statistics</h4>
+    <div style="text-align: center; margin-bottom: 20px;">
+        <button id="refreshStatsBtn" class="btn btn-info">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Stats
+        </button>
+    </div>
 
     <div class="charts-wrapper">
         <!-- Monthly Chart -->
@@ -191,151 +197,315 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script th:inline="javascript">
+<script src="/js/ajax-utils.js"></script>
 
-    const monthlyStatsData = /*[[${monthlyStats.values()}]]*/ [];
-    const hourlyStatsData = /*[[${hourlyStats.values()}]]*/ [];
+<script th:inline="javascript">
+    /**
+     * MANAGER DASHBOARD - REAL-TIME UPDATES
+     */
+
+    let monthlyChart = null;
+    let hourlyChart = null;
 
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
 
     const hours = Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0') + ':00');
 
-    // Monthly Chart
-    const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
-    new Chart(monthlyCtx, {
-        type: 'line',
-        data: {
-            labels: monthNames,
-            datasets: [{
-                label: 'Parking Sessions',
-                data: monthlyStatsData,
-                backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                borderColor: 'rgba(76, 175, 80, 1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 5,
-                pointBackgroundColor: 'rgba(76, 175, 80, 1)',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    onClick: null,
-                    labels: {
-                        font: {size: 12},
-                        color: '#2f5f2f',
-                        usePointStyle: true,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: 'rgba(76, 175, 80, 1)',
-                    borderWidth: 1
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1,
-                        color: '#666'
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        color: '#666'
-                    },
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
+    /**
+     * Initialize page on load
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        const monthlyStatsData = /*[[${monthlyStats.values()}]]*/ [];
+        const hourlyStatsData = /*[[${hourlyStats.values()}]]*/ [];
+
+        initializeMonthlyChart(monthlyStatsData);
+        initializeHourlyChart(hourlyStatsData);
+
+        // Refresh stats button listener
+        document.getElementById('refreshStatsBtn').addEventListener('click', function() {
+            refreshStats();
+        });
+
+        // Update parking lot button listener
+        document.getElementById('updateParkingLotBtn').addEventListener('click', function() {
+            updateParkingLot();
+        });
     });
 
-    // Hourly Chart
-    const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
-    new Chart(hourlyCtx, {
-        type: 'bar',
-        data: {
-            labels: hours,
-            datasets: [{
-                label: 'Parking Sessions',
-                data: hourlyStatsData,
-                backgroundColor: 'rgba(66, 133, 244, 0.7)',
-                borderColor: 'rgba(66, 133, 244, 1)',
-                borderWidth: 1,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    onClick: null,
-                    labels: {
-                        font: {size: 12},
-                        color: '#2f5f2f',
-                        usePointStyle: true,
-                        padding: 15
-                    }
+    /**
+     * Update parking lot via AJAX (no page refresh)
+     */
+    async function updateParkingLot() {
+        const button = document.getElementById('updateParkingLotBtn');
+
+        // Gather form data
+        const parkingLotData = {
+            id: document.getElementById('parkingLotId').value,
+            managerId: document.getElementById('managerId').value,
+            name: document.getElementById('parkingLotName').value,
+            spots: parseInt(document.getElementById('parkingLotSpots').value),
+            freeSpots: parseInt(document.getElementById('parkingLotFreeSpots').value),
+            price: parseFloat(document.getElementById('parkingLotPrice').value),
+            latitude: document.getElementById('parkingLotLatitude').value,
+            longitude: document.getElementById('parkingLotLongitude').value,
+            location: document.getElementById('parkingLotLocation').value
+        };
+
+        // Validate required fields
+        if (!parkingLotData.name) {
+            showErrorMessage('Parking lot name is required.');
+            return;
+        }
+
+        if (isNaN(parkingLotData.spots) || parkingLotData.spots < 0) {
+            showErrorMessage('Total spots must be a valid number.');
+            return;
+        }
+
+        if (isNaN(parkingLotData.freeSpots) || parkingLotData.freeSpots < 0) {
+            showErrorMessage('Free spots must be a valid number.');
+            return;
+        }
+
+        if (parkingLotData.freeSpots > parkingLotData.spots) {
+            showErrorMessage('Free spots cannot exceed total spots.');
+            return;
+        }
+
+        if (isNaN(parkingLotData.price) || parkingLotData.price < 0) {
+            showErrorMessage('Price must be a valid number.');
+            return;
+        }
+
+        // Show loading state
+        setButtonLoading(button, 'Updating...');
+
+        try {
+            // Send update request to API
+            // Send update request to API
+            const response = await fetch('/api/parkinglot', {
+                method: 'POST',
+                credentials: 'same-origin', // ← ADD THIS LINE
+                headers: {
+                    'Content-Type': 'application/json'
                 },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: 'rgba(66, 133, 244, 1)',
-                    borderWidth: 1
+                body: JSON.stringify(parkingLotData)
+            });
+
+            const data = await response.json();
+
+            // Restore button
+            unsetButtonLoading(button);
+
+            if (data.success) {
+                showSuccessMessage(data.message);
+                // Update local form with returned data
+                if (data.parkingLot) {
+                    document.getElementById('parkingLotName').value = data.parkingLot.name;
+                    document.getElementById('parkingLotSpots').value = data.parkingLot.spots;
+                    document.getElementById('parkingLotFreeSpots').value = data.parkingLot.freeSpots;
+                    document.getElementById('parkingLotPrice').value = data.parkingLot.price;
                 }
+            } else {
+                showErrorMessage(data.message || 'Failed to update parking lot.');
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            unsetButtonLoading(button);
+            showErrorMessage('Failed to connect to the server.');
+        }
+    }
+
+    /**
+     * Initialize the monthly chart
+     */
+    function initializeMonthlyChart(data) {
+        const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+        monthlyChart = new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: monthNames,
+                datasets: [{
+                    label: 'Parking Sessions',
+                    data: data,
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    borderColor: 'rgba(76, 175, 80, 1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: 'rgba(76, 175, 80, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1,
-                        color: '#666'
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        onClick: null,
+                        labels: {
+                            font: {size: 12},
+                            color: '#2f5f2f',
+                            usePointStyle: true,
+                            padding: 15
+                        }
                     },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(76, 175, 80, 1)',
+                        borderWidth: 1
                     }
                 },
-                x: {
-                    ticks: {
-                        color: '#666',
-                        font: {size: 10}
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            color: '#666'
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
                     },
-                    grid: {
-                        display: false
+                    x: {
+                        ticks: {
+                            color: '#666'
+                        },
+                        grid: {
+                            display: false
+                        }
                     }
                 }
             }
+        });
+    }
+
+    /**
+     * Initialize the hourly chart
+     */
+    function initializeHourlyChart(data) {
+        const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+        hourlyChart = new Chart(hourlyCtx, {
+            type: 'bar',
+            data: {
+                labels: hours,
+                datasets: [{
+                    label: 'Parking Sessions',
+                    data: data,
+                    backgroundColor: 'rgba(66, 133, 244, 0.7)',
+                    borderColor: 'rgba(66, 133, 244, 1)',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        onClick: null,
+                        labels: {
+                            font: {size: 12},
+                            color: '#2f5f2f',
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: 'rgba(66, 133, 244, 1)',
+                        borderWidth: 1
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1,
+                            color: '#666'
+                        },
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#666',
+                            font: {size: 10}
+                        },
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Refresh statistics by fetching new data from API
+     */
+    async function refreshStats() {
+        const managerId = new URLSearchParams(window.location.search).get('managerId');
+
+        if (!managerId) {
+            showErrorMessage('Manager ID not found.');
+            return;
         }
-    });
+
+        // Show loading state
+        const button = document.getElementById('refreshStatsBtn');
+        setButtonLoading(button, 'Refreshing...');
+
+        // Fetch fresh stats data
+        const data = await fetchData('/api/parkinglot-stats', { managerId: managerId });
+
+        // Restore button
+        unsetButtonLoading(button);
+
+        if (!data) {
+            showErrorMessage('Failed to refresh statistics. Please try again.');
+            return;
+        }
+
+        // Update charts with new data
+        const monthlyData = Object.values(data.monthlyStats);
+        const hourlyData = Object.values(data.hourlyStats);
+
+        // Update monthly chart
+        if (monthlyChart) {
+            monthlyChart.data.datasets[0].data = monthlyData;
+            monthlyChart.update();
+        }
+
+        // Update hourly chart
+        if (hourlyChart) {
+            hourlyChart.data.datasets[0].data = hourlyData;
+            hourlyChart.update();
+        }
+
+        showSuccessMessage('Statistics updated successfully!');
+    }
 </script>
 
 </body>

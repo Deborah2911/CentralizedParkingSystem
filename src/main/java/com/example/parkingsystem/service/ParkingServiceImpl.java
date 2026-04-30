@@ -5,6 +5,7 @@ import com.example.parkingsystem.util.DistanceCalculator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.parkingsystem.repository.ParkingRepoI;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util. Comparator;
@@ -21,16 +22,6 @@ public class ParkingServiceImpl implements  ParkingServiceI {
     private DistanceCalculator distanceCalculator;
 
     @Override
-    public List<ParkingLot> getAllLots() {
-        return parkingRepo.findAll();
-    }
-
-    @Override
-    public void deleteById(Integer id){
-        parkingRepo.deleteById(id);
-    }
-
-    @Override
     public ParkingLot findParkingLotByManagerId(Integer id){
         return parkingRepo.findByManagerId(id);
     }
@@ -41,10 +32,13 @@ public class ParkingServiceImpl implements  ParkingServiceI {
     }
 
     @Override
-    public void updateParkingLot(ParkingLot parkingLot){
-        parkingRepo.save(parkingLot);
+    @Transactional
+    public ParkingLot updateParkingLot(ParkingLot parkingLot){
+        System.out.println("ParkingServiceImpl.updateParkingLot() called with: " + parkingLot.getName());
+        ParkingLot saved = parkingRepo.save(parkingLot);
+        System.out.println("ParkingServiceImpl.updateParkingLot() - saved to DB");
+        return saved;
     }
-
     @Override
     public ParkingLot getParkingLotById(Integer id) {
         return parkingRepo.findById(id).orElse(null);

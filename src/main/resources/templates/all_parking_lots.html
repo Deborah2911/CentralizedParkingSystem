@@ -318,7 +318,15 @@
 </div>
 
 <!-- JavaScript -->
+<script src="/js/ajax-utils.js"></script>
+
 <script>
+    /**
+     * ========================================
+     * PARKING LOTS PAGE - REAL-TIME UPDATES
+     * ========================================
+     */
+
     let userLocation = { lat: null, lon: null };
     let currentBill = {
         lotId: null,
@@ -328,15 +336,205 @@
         totalAmount: 0,
         dateTime: null
     };
+    let billModalInstance = null;
 
-    window.addEventListener('DOMContentLoaded', () => {
+    /**
+     * Update parking lots cards by fetching data and re-rendering
+     */
+    async function updateParkingLots() {
+        const sort = document.getElementById('sortSelect').value;
         const lat = localStorage.getItem('userLat');
         const lon = localStorage.getItem('userLon');
 
-        if (lat && lon) {
-            updateLocationDisplay(parseFloat(lat), parseFloat(lon));
+        // Validate "nearest" requires location
+        if (sort === 'nearest') {
+            if (!lat || !lon) {
+                showErrorMessage('Please set your location first to use nearest sorting.');
+                document.getElementById('sortSelect').value = 'name';
+                return;
+            }
         }
 
+        // Fetch parking lots data from API
+        const data = await fetchData('/api/parking-lots', {
+            sort: sort,
+            userLat: lat || null,
+            userLon: lon || null
+        });
+
+        if (!data) {
+            showErrorMessage('Failed to load parking lots. Please try again.');
+            return;
+        }
+
+        // Get the container for parking lot cards
+        const cardsContainer = document.querySelector('.row.g-4');
+
+        // Clear existing cards
+        cardsContainer.innerHTML = '';
+
+        // Add each parking lot as a card
+        data.parkingLots.forEach(lot => {
+            const col = document.createElement('div');
+            col.className = 'col-md-5 col-lg-4';
+
+            // Build distance badge if available
+            const distanceBadge = lot.distance
+                ? `<span class="badge bg-info text-dark">Distance: ${lot.distance.toFixed(1)} km</span><br>`
+                : '';
+
+            // Build free spots indicator (red if 0)
+            const freeSpotClass = lot.freeSpots === 0 ? 'text-danger' : '';
+
+            col.innerHTML = `
+                <div class="card shadow-sm card-wrapper"
+                     data-bs-toggle="modal"
+                     data-bs-target="#billModal"
+                     data-lot-id="${lot.id}"
+                     data-lot-name="${escapeHtml(lot.name)}"
+                     data-lot-price="${lot.price}">
+                    <div class="card-body">
+                        <h5 class="card-title">${escapeHtml(lot.name)}</h5>
+                        <p class="card-text">
+                            <a href="${escapeHtml(lot.location)}" target="_blank"
+                               onclick="event.stopPropagation()">
+                                ${escapeHtml(lot.location)}
+                            </a><br>
+                            ${distanceBadge}
+                            <strong>Total spots:</strong> ${lot.spots}<br>
+                            <span class="${freeSpotClass}">
+                                <strong>Free spots:</strong> ${lot.freeSpots}
+                            </span><br>
+                            <strong>Price:</strong> RON ${parseFloat(lot.price).toFixed(2)}/hr
+                        </p>
+                        <div class="card-action-btn">
+                            <i class="bi bi-calculator-fill" style="font-size: 1.5rem; color: #3a7f3a;"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            cardsContainer.appendChild(col);
+        });
+
+        // Re-attach bill modal listeners to newly created cards
+        attachBillModalListeners();
+    }
+
+    /**
+     * Escape HTML special characters for security
+     */
+    function escapeHtml(text) {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * Attach event listeners to bill modal and parking lot cards
+     */
+    function attachBillModalListeners() {
+        const billModal = document.getElementById('billModal');
+
+        billModal.addEventListener('show.bs.modal', function(event) {
+            const card = event.relatedTarget;
+
+            const lotId = card.getAttribute('data-lot-id');
+            const lotName = card.getAttribute('data-lot-name');
+            const lotPrice = card.getAttribute('data-lot-price');
+
+            currentBill.lotId = lotId;
+            currentBill.lotName = lotName;
+            currentBill.lotPrice = parseFloat(lotPrice);
+
+            document.getElementById('billLotName').textContent = lotName;
+            document.getElementById('billPrice').textContent = parseFloat(lotPrice).toFixed(2);
+
+            document.getElementById('hoursInput').value = '0';
+            calculateBill();
+        });
+    }
+
+    /**
+     * Calculate the total bill amount
+     */
+    function calculateBill() {
+        const hours = parseInt(document.getElementById('hoursInput').value) || 0;
+        const price = currentBill.lotPrice;
+        const total = (hours * price).toFixed(2);
+
+        currentBill.hours = hours;
+        currentBill.totalAmount = parseFloat(total);
+
+        document.getElementById('totalBill').textContent = total;
+    }
+
+    /**
+     * Save bill to database
+     */
+    async function saveBill() {
+        const dateTimeInput = document.getElementById('dateTimeInput').value;
+
+        if (!dateTimeInput) {
+            showErrorMessage('Please select a date and time.');
+            return;
+        }
+
+        // Validate date is not in the future
+        const selectedDateTime = new Date(dateTimeInput);
+        const now = new Date();
+
+        if (selectedDateTime > now) {
+            showErrorMessage('Cannot create a bill with a future date. Please select a date and time in the past.');
+            return;
+        }
+
+        if (currentBill.hours === 0) {
+            showErrorMessage('Please enter the number of hours spent at this parking lot.');
+            return;
+        }
+
+        // Convert datetime-local to ISO 8601 format
+        const dateTimeISO = dateTimeInput + ':00';
+
+        const billingData = {
+            parkingLotId: currentBill.lotId,
+            moneyAmount: currentBill.totalAmount,
+            timeSpent: currentBill.hours,
+            dateIssued: dateTimeISO
+        };
+
+        try {
+            const response = await fetch('/save-bill', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(billingData)
+            });
+
+            if (response.ok) {
+                showSuccessMessage('Bill successfully saved!');
+                bootstrap.Modal.getInstance(document.getElementById('billModal')).hide();
+            } else {
+                const errorText = await response.text();
+                showErrorMessage(errorText || 'Failed to save bill.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showErrorMessage('Failed to connect to the server.');
+        }
+    }
+
+    /**
+     * Initialize page on load
+     */
+    document.addEventListener('DOMContentLoaded', function() {
         // Set default date-time to now
         const now = new Date();
         const year = now.getFullYear();
@@ -345,10 +543,63 @@
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
         document.getElementById('dateTimeInput').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        // Load saved location if exists
+        const lat = localStorage.getItem('userLat');
+        const lon = localStorage.getItem('userLon');
+
+        if (lat && lon) {
+            updateLocationDisplay(parseFloat(lat), parseFloat(lon));
+        }
+
+        // Sort dropdown listener
+        document.getElementById('sortSelect').addEventListener('change', function() {
+            updateParkingLots();
+        });
+
+        // Get Location button listener
+        document.getElementById('getLocationBtn').addEventListener('click', function() {
+            getLocationAndUpdate();
+        });
+
+        // Date/Time input listener
+        document.getElementById('dateTimeInput').addEventListener('change', function() {
+            if (this.value) {
+                currentBill.dateTime = this.value;
+            }
+        });
+
+        // Hours input listener
+        document.getElementById('hoursInput').addEventListener('input', function() {
+            let value = this.value;
+
+            // Remove non-digit characters
+            value = value.replace(/[^\d]/g, '');
+
+            let intValue = parseInt(value) || 0;
+
+            // Cap at 999
+            if (intValue > 999) {
+                intValue = 0;
+            }
+
+            this.value = intValue;
+            calculateBill();
+        });
+
+        // Confirm Bill button listener
+        document.getElementById('confirmBillBtn').addEventListener('click', function() {
+            saveBill();
+        });
+
+        // Attach bill modal listeners
+        attachBillModalListeners();
     });
 
-    // Location Modal Logic
-    document.getElementById('getLocationBtn').addEventListener('click', () => {
+    /**
+     * Get user location and update display
+     */
+    function getLocationAndUpdate() {
         const status = document.getElementById('locationStatus');
 
         if (!navigator.geolocation) {
@@ -376,17 +627,25 @@
             },
             () => {
                 status.className = 'alert alert-danger';
-                status.innerHTML = 'Unable to retrieve location.';
+                status.innerHTML = 'Unable to retrieve location. Please check your browser permissions.';
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );
-    });
+    }
 
+    /**
+     * Update location display in modal
+     */
     function updateLocationDisplay(lat, lon) {
         document.getElementById('currentLat').value = lat.toFixed(6);
         document.getElementById('currentLon').value = lon.toFixed(6);
+        userLocation.lat = lat;
+        userLocation.lon = lon;
     }
 
+    /**
+     * Reverse geocode coordinates to get address
+     */
     function reverseGeocode(lat, lon) {
         fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
             .then(res => res.json())
@@ -399,132 +658,6 @@
                     'Unable to retrieve address';
             });
     }
-
-    document.getElementById('sortSelect').addEventListener('change', function () {
-        const sort = this.value;
-
-        if (sort === 'nearest') {
-            const lat = localStorage.getItem('userLat');
-            const lon = localStorage.getItem('userLon');
-
-            if (lat && lon) {
-                window.location.href =
-                    `/parking-lots?sort=nearest&userLat=${lat}&userLon=${lon}`;
-            } else {
-                alert('Please set your location first.');
-            }
-        } else {
-            window.location.href = `/parking-lots?sort=${sort}`;
-        }
-    });
-
-    // Bill Modal Logic
-    const billModal = document.getElementById('billModal');
-
-    billModal.addEventListener('show.bs.modal', (event) => {
-        const card = event.relatedTarget;
-
-        const lotId = card.getAttribute('data-lot-id');
-        const lotName = card.getAttribute('data-lot-name');
-        const lotPrice = card.getAttribute('data-lot-price');
-
-        currentBill.lotId = lotId;
-        currentBill.lotName = lotName;
-        currentBill.lotPrice = parseFloat(lotPrice);
-
-        document.getElementById('billLotName').textContent = lotName;
-        document.getElementById('billPrice').textContent = parseFloat(lotPrice).toFixed(2);
-
-        document.getElementById('hoursInput').value = '0';
-        calculateBill();
-    });
-
-    document.getElementById('dateTimeInput').addEventListener('change', function() {
-        if (this.value) {
-            currentBill.dateTime = this.value;
-        }
-    });
-
-    document.getElementById('hoursInput').addEventListener('input', function() {
-        let value = this.value;
-
-        value = value.replace(/[^\d]/g, '');
-
-        let intValue = parseInt(value) || 0;
-
-        if (intValue > 999) {
-            intValue = 0;
-        }
-
-        this.value = intValue;
-        calculateBill();
-    });
-
-    function calculateBill() {
-        const hours = parseInt(document.getElementById('hoursInput').value) || 0;
-        const price = currentBill.lotPrice;
-        const total = (hours * price).toFixed(2);
-
-        currentBill.hours = hours;
-        currentBill.totalAmount = parseFloat(total);
-
-        document.getElementById('totalBill').textContent = total;
-    }
-
-    document.getElementById('confirmBillBtn').addEventListener('click', () => {
-        const dateTimeInput = document.getElementById('dateTimeInput').value;
-
-        if (!dateTimeInput) {
-            alert('Please select a date and time.');
-            return;
-        }
-
-        // Validate date is not in the future
-        const selectedDateTime = new Date(dateTimeInput);
-        const now = new Date();
-
-        if (selectedDateTime > now) {
-            alert('Cannot create a bill with a future date. Please select a date and time in the past.');
-            return;
-        }
-
-        if (currentBill.hours === 0) {
-            alert('Enter the number of hours spent at this parking lot.');
-            return;
-        }
-
-        // Convert datetime-local to ISO 8601 format (add :00 for seconds)
-        const dateTimeISO = dateTimeInput + ':00';
-
-        const billingData = {
-            parkingLotId: currentBill.lotId,
-            moneyAmount: currentBill.totalAmount,
-            timeSpent: currentBill.hours,
-            dateIssued: dateTimeISO
-        };
-
-        fetch('/save-bill', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(billingData)
-        })
-            .then(response => {
-                if (response.ok) {
-                    alert('Bill successfully saved!');
-                    bootstrap.Modal.getInstance(billModal).hide();
-                } else {
-                    return response.text().then(text => {
-                        alert(text);
-                    });
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to connect to the server.');
-            });
-    });
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
