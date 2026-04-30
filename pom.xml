@@ -1,43 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.7</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>com.example</groupId>
-	<artifactId>parkingsystem</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>parkingsystem</name>
-	<description>Centralized Parking System for a city</description>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.example</groupId>
+    <artifactId>parkingsystem</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>parkingsystem</name>
+    <description>Centralized Parking System for a city</description>
+    <url/>
+    <licenses>
+        <license/>
+    </licenses>
+    <developers>
+        <developer/>
+    </developers>
+    <scm>
+        <connection/>
+        <developerConnection/>
+        <tag/>
+        <url/>
+    </scm>
     <properties>
         <java.version>17</java.version>
         <maven.compiler.source>23</maven.compiler.source>
         <maven.compiler.target>23</maven.compiler.target>
+        <!-- ✅ Suppress CDS warnings -->
+        <maven.surefire.cds.warning.suppress>-XX:-UnlockDiagnosticVMOptions -XX:-PrintSharedSpaces</maven.surefire.cds.warning.suppress>
     </properties>
-	<dependencies>
+    <dependencies>
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
+        <!-- Spring Boot Starter Test (includes JUnit 5, Mockito, AssertJ) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -67,13 +70,22 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- H2 Database for testing -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-	</dependencies>
+        <!-- Mockito Inline for proper agent support -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>5.2.0</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
 
     <build>
         <plugins>
@@ -100,6 +112,50 @@
                         </exclude>
                     </excludes>
                 </configuration>
+            </plugin>
+
+            <!-- ✅ UPDATED: Maven Surefire Plugin with Mockito Agent AND CDS Warning Suppression -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.0.0-M9</version>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <!-- Suppress Spring Boot auto-configuration report -->
+                    <systemPropertyVariables>
+                        <spring.boot.logging.level>WARN</spring.boot.logging.level>
+                    </systemPropertyVariables>
+                    <argLine>
+                        -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar
+                        -XX:+IgnoreUnrecognizedVMOptions
+                        -XX:-UnlockDiagnosticVMOptions
+                        -XX:-PrintSharedSpaces
+                        -XX:SharedArchiveFile=/dev/null
+                    </argLine>
+                </configuration>
+            </plugin>
+
+            <!-- JaCoCo for code coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.8</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
