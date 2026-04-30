@@ -594,6 +594,8 @@
 
         // Attach bill modal listeners
         attachBillModalListeners();
+
+        startAutoRefresh();
     });
 
     /**
@@ -658,6 +660,92 @@
                     'Unable to retrieve address';
             });
     }
+
+    /**
+     * Auto-refresh parking lots data every 10 seconds
+     */
+    let autoRefreshInterval = null;
+
+    function startAutoRefresh() {
+        console.log('Starting auto-refresh for parking lots...');
+
+        autoRefreshInterval = setInterval(async function() {
+            const sort = document.getElementById('sortSelect').value;
+            const lat = localStorage.getItem('userLat');
+            const lon = localStorage.getItem('userLon');
+
+            // Fetch fresh data
+            const data = await fetchData('/api/parking-lots', {
+                sort: sort,
+                userLat: lat || null,
+                userLon: lon || null
+            });
+
+            if (!data) return;
+
+            // Get the container for parking lot cards
+            const cardsContainer = document.querySelector('.row.g-4');
+
+            // Clear existing cards
+            cardsContainer.innerHTML = '';
+
+            // Add each parking lot as a card
+            data.parkingLots.forEach(lot => {
+                const col = document.createElement('div');
+                col.className = 'col-md-5 col-lg-4';
+
+                // Build distance badge if available
+                const distanceBadge = lot.distance
+                    ? `<span class="badge bg-info text-dark">Distance: ${lot.distance.toFixed(1)} km</span><br>`
+                    : '';
+
+                // Build free spots indicator (red if 0)
+                const freeSpotClass = lot.freeSpots === 0 ? 'text-danger' : '';
+
+                col.innerHTML = `
+                <div class="card shadow-sm card-wrapper"
+                     data-bs-toggle="modal"
+                     data-bs-target="#billModal"
+                     data-lot-id="${lot.id}"
+                     data-lot-name="${escapeHtml(lot.name)}"
+                     data-lot-price="${lot.price}">
+                    <div class="card-body">
+                        <h5 class="card-title">${escapeHtml(lot.name)}</h5>
+                        <p class="card-text">
+                            <a href="${escapeHtml(lot.location)}" target="_blank"
+                               onclick="event.stopPropagation()">
+                                ${escapeHtml(lot.location)}
+                            </a><br>
+                            ${distanceBadge}
+                            <strong>Total spots:</strong> ${lot.spots}<br>
+                            <span class="${freeSpotClass}">
+                                <strong>Free spots:</strong> ${lot.freeSpots}
+                            </span><br>
+                            <strong>Price:</strong> RON ${parseFloat(lot.price).toFixed(2)}/hr
+                        </p>
+                        <div class="card-action-btn">
+                            <i class="bi bi-calculator-fill" style="font-size: 1.5rem; color: #3a7f3a;"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+                cardsContainer.appendChild(col);
+            });
+
+            // Re-attach bill modal listeners
+            attachBillModalListeners();
+        }, 10000); // Refresh every 10 seconds
+    }
+
+    function stopAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+            autoRefreshInterval = null;
+            console.log('Auto-refresh stopped');
+        }
+    }
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

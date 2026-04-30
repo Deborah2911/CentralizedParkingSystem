@@ -89,7 +89,7 @@ public class ParkingSystemController{
 
     @PostMapping("/signup")
     public String processSignup(@ModelAttribute("user") User user, Model model) {
-        if(userService.usernameTaken(user.getUsername())) {
+        if(!userService.usernameTaken(user.getUsername())) {
             userService.createUser(user);
             return "redirect:/login";
         }
@@ -105,8 +105,7 @@ public class ParkingSystemController{
         ParkingLot parkingLot = parkingService.findParkingLotByManagerId(managerId);
 
         if (parkingLot == null) {
-            model.addAttribute("error", "No parking lot found for this manager.");
-            return "login";
+            return "waiting_for_assignment";
         }
 
         int currentYear = LocalDate.now().getYear();
